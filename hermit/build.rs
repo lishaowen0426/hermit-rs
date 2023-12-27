@@ -19,7 +19,8 @@ fn main() {
 		return;
 	}
 
-	let kernel_src = KernelSrc::local().unwrap_or_else(KernelSrc::download);
+	//let kernel_src = KernelSrc::local().unwrap_or_else(KernelSrc::download);
+	let kernel_src = KernelSrc::local().unwrap();
 
 	kernel_src.build();
 }
@@ -32,9 +33,18 @@ impl KernelSrc {
 	fn local() -> Option<Self> {
 		let mut src_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
 		src_dir.set_file_name("kernel");
-		src_dir.exists().then_some(Self { src_dir })
+		let manifest_path = src_dir.join("Cargo.toml");
+		if manifest_path.exists() {
+			Some(Self { src_dir })
+		} else {
+			let fallback_kernel_dir = PathBuf::from("/Users/lsw/Code/hermit/kernel");
+			fallback_kernel_dir.exists().then(|| Self {
+				src_dir: fallback_kernel_dir,
+			})
+		}
+		//manifest_path.exists().then_some(Self { src_dir })
 	}
-
+	#[allow(unused)]
 	fn download() -> Self {
 		let version = "0.6.7";
 		let out_dir = out_dir();
