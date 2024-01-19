@@ -146,6 +146,29 @@ pub const POLLNVAL: i16 = 0x20;
 pub const POLLRDNORM: i16 = 0x040;
 pub const POLLRDBAND: i16 = 0x080;
 pub const POLLRDHUP: i16 = 0x2000;
+pub const S_IFIFO: mode_t = 4096;
+pub const S_IFCHR: mode_t = 8192;
+pub const S_IFBLK: mode_t = 24576;
+pub const S_IFDIR: mode_t = 16384;
+pub const S_IFREG: mode_t = 32768;
+pub const S_IFLNK: mode_t = 40960;
+pub const S_IFSOCK: mode_t = 49152;
+pub const S_IFMT: mode_t = 61440;
+pub const S_IRWXU: mode_t = 448;
+pub const S_IXUSR: mode_t = 64;
+pub const S_IWUSR: mode_t = 128;
+pub const S_IRUSR: mode_t = 256;
+pub const S_IRWXG: mode_t = 56;
+pub const S_IXGRP: mode_t = 8;
+pub const S_IWGRP: mode_t = 16;
+pub const S_IRGRP: mode_t = 32;
+pub const S_IRWXO: mode_t = 7;
+pub const S_IXOTH: mode_t = 1;
+pub const S_IWOTH: mode_t = 2;
+pub const S_IROTH: mode_t = 4;
+pub const SEEK_SET: i32 = 0;
+pub const SEEK_CUR: i32 = 1;
+pub const SEEK_END: i32 = 2;
 pub type sa_family_t = u8;
 pub type socklen_t = u32;
 pub type in_addr_t = u32;
@@ -153,6 +176,17 @@ pub type in_port_t = u16;
 pub type time_t = i64;
 pub type suseconds_t = i64;
 pub type nfds_t = usize;
+pub type dev_t = u64;
+pub type ino_t = u64;
+pub type mode_t = u32;
+pub type nlink_t = u64;
+pub type uid_t = u32;
+pub type gid_t = u32;
+pub type off_t = i64;
+pub type off64_t = i64;
+pub type blksize_t = c_int;
+pub type blkcnt_t = i64;
+pub type blkcnt64_t = i64;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -269,7 +303,7 @@ pub enum DirectoryEntry {
 }
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct stat {
 	pub st_dev: u64,
 	pub st_ino: u64,
@@ -287,6 +321,8 @@ pub struct stat {
 	pub st_mtime_nsec: i64,
 	pub st_ctime: i64,
 	pub st_ctime_nsec: i64,
+	pub st_birthtime: i64,
+	pub st_birthtime_nsec: i64,
 }
 
 pub const DT_UNKNOWN: u32 = 0;
@@ -298,11 +334,6 @@ pub const DT_REG: u32 = 8;
 pub const DT_LNK: u32 = 10;
 pub const DT_SOCK: u32 = 12;
 pub const DT_WHT: u32 = 14;
-
-pub const S_IFDIR: u32 = 16384;
-pub const S_IFREG: u32 = 32768;
-pub const S_IFLNK: u32 = 40960;
-pub const S_IFMT: u32 = 61440;
 
 // sysmbols, which are part of the library operating system
 extern "C" {
@@ -459,33 +490,40 @@ extern "C" {
 	/// If the specified file does not exist, it may optionally
 	/// be created by open().
 	#[link_name = "sys_open"]
-	pub fn open(name: *const i8, flags: i32, mode: i32) -> i32;
+	pub fn open(name: *const u8, flags: i32, mode: i32) -> i32;
 
 	/// open a directory
 	///
 	/// The opendir() system call opens the directory specified by `name`.
 	#[link_name = "sys_opendir"]
-	pub fn opendir(name: *const i8) -> i32;
+	pub fn opendir(name: *const u8) -> i32;
 
 	/// delete the file it refers to `name`
 	#[link_name = "sys_unlink"]
-	pub fn unlink(name: *const i8) -> i32;
+	pub fn unlink(name: *const u8) -> i32;
 
 	/// remove directory it refers to `name`
 	#[link_name = "sys_rmdir"]
-	pub fn rmdir(name: *const i8) -> i32;
+	pub fn rmdir(name: *const u8) -> i32;
 
 	/// stat
 	#[link_name = "sys_stat"]
-	pub fn stat(name: *const i8, stat: *mut stat) -> i32;
+	pub fn stat(name: *const u8, stat: *mut stat) -> i32;
+
+	/// permissions
+	#[link_name = "sys_set_permission"]
+	pub fn set_permission(name: *const u8, perm: u32) -> i32;
 
 	/// lstat
 	#[link_name = "sys_lstat"]
-	pub fn lstat(name: *const i8, stat: *mut stat) -> i32;
+	pub fn lstat(name: *const u8, stat: *mut stat) -> i32;
 
 	/// fstat
 	#[link_name = "sys_fstat"]
 	pub fn fstat(fd: i32, stat: *mut stat) -> i32;
+
+	#[link_name = "sys_lseek"]
+	pub fn lseek(fd: i32, offset: isize, whence: i32) -> i32;
 
 	/// determines the number of activated processors
 	#[link_name = "sys_get_processor_count"]
@@ -568,7 +606,7 @@ extern "C" {
 	/// 'mkdir' attempts to create a directory,
 	/// it returns 0 on success and -1 on error
 	#[link_name = "sys_mkdir"]
-	pub fn mkdir(name: *const i8, mode: u32) -> i32;
+	pub fn mkdir(name: *const u8, mode: u32) -> i32;
 
 	/// Fill `len` bytes in `buf` with cryptographically secure random data.
 	///
@@ -674,7 +712,7 @@ extern "C" {
 
 	#[link_name = "sys_getaddrinfo"]
 	pub fn getaddrinfo(
-		nodename: *const i8,
+		nodename: *const u8,
 		servname: *const u8,
 		hints: *const addrinfo,
 		res: *mut *mut addrinfo,
