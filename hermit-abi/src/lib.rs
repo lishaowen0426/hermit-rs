@@ -287,6 +287,7 @@ pub struct pollfd {
 }
 
 #[repr(C)]
+#[derive(Debug, Copy, Clone)]
 pub struct dirent {
 	pub d_ino: u64,
 	pub d_off: u64,
@@ -323,6 +324,18 @@ pub struct stat {
 	pub st_ctime_nsec: i64,
 	pub st_birthtime: i64,
 	pub st_birthtime_nsec: i64,
+}
+
+pub mod littlefs {
+	pub const LF_DIR: u32 = 0b1 << 0;
+	pub const LF_FILE: u32 = 0b1 << 1;
+	pub const LF_SYMLINK: u32 = 0b1 << 2;
+	pub const LF_BLK: u32 = 0b1 << 3;
+	pub const LF_CHAR: u32 = 0b1 << 4;
+	pub const LF_FIFO: u32 = 0b1 << 5;
+	pub const LF_SOCKET_DGRAM: u32 = 0b1 << 6;
+	pub const LF_SOCKET_STREAM: u32 = 0b1 << 7;
+	pub const LF_RDONLY: u32 = 0b1 << 8;
 }
 
 pub const DT_UNKNOWN: u32 = 0;
@@ -498,6 +511,9 @@ extern "C" {
 	#[link_name = "sys_opendir"]
 	pub fn opendir(name: *const u8) -> i32;
 
+	/// The opendir() system call opens the directory specified by `name`.
+	#[link_name = "sys_next_dir_entry"]
+	pub fn next_dir_entry(dd: i32, path: *mut u8, attr: *mut stat) -> i32;
 	/// delete the file it refers to `name`
 	#[link_name = "sys_unlink"]
 	pub fn unlink(name: *const u8) -> i32;
